@@ -1,0 +1,30 @@
+# Git & version control
+.git
+.gitignore
+
+# Python caches & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+env/
+
+# Local environment & IDE files
+.env
+.env.*
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Tests, documentation & archives (not needed at container runtime)
+tests/
+README.md
+*.zip
+docker-compose.yml

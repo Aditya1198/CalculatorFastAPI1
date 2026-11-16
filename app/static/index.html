@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FastAPI Calculator</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel-border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --operator: #6366f1;
+      --operator-hover: #4f46e5;
+      --equals: #10b981;
+      --equals-hover: #059669;
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.14);
+      --btn: #334155;
+      --btn-hover: #475569;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+    }
+
+    .status-badge {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-weight: 600;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 0.35rem;
+    }
+
+    header a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    header a:hover {
+      text-decoration: underline;
+    }
+
+    .app-layout {
+      display: grid;
+      grid-template-columns: 380px 340px;
+      gap: 1.5rem;
+      max-width: 760px;
+      width: 100%;
+    }
+
+    @media (max-width: 760px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .display-box {
+      background: #090d16;
+      border: 1px solid var(--panel-border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      text-align: right;
+      min-height: 92px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      word-break: break-all;
+    }
+
+    .display-sub {
+      color: var(--muted);
+      font-size: 0.85rem;
+      min-height: 1.2rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .display-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 1.85rem;
+      font-weight: 700;
+      text-align: right;
+      outline: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .error-banner {
+      display: none;
+      background: var(--danger-bg);
+      border: 1px solid var(--danger);
+      color: #fca5a5;
+      padding: 0.65rem 0.85rem;
+      border-radius: 0.6rem;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .error-banner.visible {
+      display: flex;
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.6rem;
+    }
+
+    button.key {
+      background: var(--btn);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 0.65rem;
+      padding: 0.9rem 0.5rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      user-select: none;
+    }
+
+    button.key:hover {
+      background: var(--btn-hover);
+      transform: translateY(-1px);
+    }
+
+    button.key:active {
+      transform: translateY(0);
+    }
+
+    button.key.op {
+      background: var(--operator);
+    }
+
+    button.key.op:hover {
+      background: var(--operator-hover);
+    }
+
+    button.key.eq {
+      background: var(--equals);
+      grid-column: span 2;
+    }
+
+    button.key.eq:hover {
+      background: var(--equals-hover);
+    }
+
+    button.key.clear {
+      background: rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    button.key.clear:hover {
+      background: rgba(239, 68, 68, 0.4);
+    }
+
+    .direct-ops {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--panel-border);
+    }
+
+    .direct-ops-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+      font-weight: 600;
+    }
+
+    .direct-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .direct-inputs input {
+      background: #090d16;
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      padding: 0.5rem 0.65rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      width: 100%;
+    }
+
+    .direct-buttons {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.4rem;
+    }
+
+    .direct-buttons button {
+      background: #0f172a;
+      color: var(--accent);
+      border: 1px solid var(--panel-border);
+      border-radius: 0.45rem;
+      padding: 0.45rem 0.2rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .direct-buttons button:hover {
+      background: var(--accent);
+      color: #0f172a;
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.85rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    .history-header h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .history-actions {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .btn-sm {
+      background: #0f172a;
+      color: var(--muted);
+      border: 1px solid var(--panel-border);
+      border-radius: 0.4rem;
+      padding: 0.28rem 0.55rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .btn-sm:hover {
+      color: var(--text);
+      border-color: var(--muted);
+    }
+
+    .history-list {
+      list-style: none;
+      max-height: 430px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .history-item {
+      background: #090d16;
+      border: 1px solid var(--panel-border);
+      border-radius: 0.6rem;
+      padding: 0.65rem 0.8rem;
+      cursor: pointer;
+      transition: border-color 0.12s ease;
+    }
+
+    .history-item:hover {
+      border-color: var(--accent);
+    }
+
+    .history-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .op-tag {
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent);
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.3rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.68rem;
+    }
+
+    .history-item-expr {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.95rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .history-item-res {
+      font-weight: 700;
+      color: #34d399;
+    }
+
+    .empty-state {
+      color: var(--muted);
+      font-size: 0.88rem;
+      text-align: center;
+      padding: 2rem 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>
+      FastAPI Calculator
+      <span id="healthBadge" class="status-badge">Checking API...</span>
+    </h1>
+    <p>Safe AST Parser &bull; Pydantic Validation &bull; <a href="/docs" target="_blank">OpenAPI /docs</a></p>
+  </header>
+
+  <main class="app-layout">
+    <!-- Calculator Card -->
+    <section class="card">
+      <div class="display-box">
+        <div id="lastExpression" class="display-sub">&nbsp;</div>
+        <input
+          id="displayInput"
+          class="display-input"
+          type="text"
+          value="0"
+          aria-label="Calculator display"
+          autocomplete="off"
+        />
+      </div>
+
+      <div id="errorBanner" class="error-banner" role="alert">
+        <span id="errorText"></span>
+      </div>
+
+      <div class="keypad">
+        <button class="key clear" onclick="clearDisplay()">C</button>
+        <button class="key" onclick="appendToken('(')">(</button>
+        <button class="key" onclick="appendToken(')')">)</button>
+        <button class="key" onclick="backspace()">&#9003;</button>
+
+        <button class="key" onclick="appendToken('7')">7</button>
+        <button class="key" onclick="appendToken('8')">8</button>
+        <button class="key" onclick="appendToken('9')">9</button>
+        <button class="key op" onclick="appendToken(' / ')">&divide;</button>
+
+        <button class="key" onclick="appendToken('4')">4</button>
+        <button class="key" onclick="appendToken('5')">5</button>
+        <button class="key" onclick="appendToken('6')">6</button>
+        <button class="key op" onclick="appendToken(' * ')">&times;</button>
+
+        <button class="key" onclick="appendToken('1')">1</button>
+        <button class="key" onclick="appendToken('2')">2</button>
+        <button class="key" onclick="appendToken('3')">3</button>
+        <button class="key op" onclick="appendToken(' - ')">&minus;</button>
+
+        <button class="key" onclick="appendToken('0')">0</button>
+        <button class="key" onclick="appendToken('.')">.</button>
+        <button class="key op" onclick="appendToken(' ** ')" title="Power (a ** b)">x<sup>y</sup></button>
+        <button class="key op" onclick="appendToken(' + ')">+</button>
+
+        <button class="key" onclick="negateCurrent()" style="grid-column: span 2;">&plusmn;</button>
+        <button class="key eq" onclick="evaluateExpression()">=</button>
+      </div>
+
+      <!-- Direct Binary Endpoint Caller (/add, /subtract, /multiply, /divide, /power) -->
+      <div class="direct-ops">
+        <div class="direct-ops-title">Direct Two-Number Endpoints (POST /add, /divide, etc.)</div>
+        <div class="direct-inputs">
+          <input id="inputA" type="text" placeholder="Number a (e.g. 10)" value="10" />
+          <input id="inputB" type="text" placeholder="Number b (e.g. 5)" value="5" />
+        </div>
+        <div class="direct-buttons">
+          <button onclick="callBinaryEndpoint('add')">/add</button>
+          <button onclick="callBinaryEndpoint('subtract')">/subtract</button>
+          <button onclick="callBinaryEndpoint('multiply')">/multiply</button>
+          <button onclick="callBinaryEndpoint('divide')">/divide</button>
+          <button onclick="callBinaryEndpoint('power')">/power</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- History Panel -->
+    <section class="card">
+      <div class="history-header">
+        <h2>History (Last 20)</h2>
+        <div class="history-actions">
+          <button class="btn-sm" onclick="fetchHistory()">Refresh</button>
+          <button class="btn-sm" onclick="clearHistory()">Clear</button>
+        </div>
+      </div>
+      <ul id="historyList" class="history-list">
+        <li class="empty-state">No calculations yet.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script>
+    const displayInput = document.getElementById("displayInput");
+    const lastExpression = document.getElementById("lastExpression");
+    const errorBanner = document.getElementById("errorBanner");
+    const errorText = document.getElementById("errorText");
+    const historyList = document.getElementById("historyList");
+    const healthBadge = document.getElementById("healthBadge");
+
+    function showError(message) {
+      errorText.textContent = message;
+      errorBanner.classList.add("visible");
+    }
+
+    function hideError() {
+      errorText.textContent = "";
+      errorBanner.classList.remove("visible");
+    }
+
+    function appendToken(token) {
+      hideError();
+      const current = displayInput.value;
+      if (current === "0" && /^[0-9(]$/.test(token)) {
+        displayInput.value = token;
+      } else {
+        displayInput.value = current + token;
+      }
+      displayInput.focus();
+    }
+
+    function clearDisplay() {
+      hideError();
+      displayInput.value = "0";
+      lastExpression.innerHTML = "&nbsp;";
+    }
+
+    function backspace() {
+      hideError();
+      const current = displayInput.value.trimEnd();
+      if (current.length <= 1) {
+        displayInput.value = "0";
+      } else {
+        displayInput.value = current.slice(0, -1);
+      }
+    }
+
+    function negateCurrent() {
+      hideError();
+      const current = displayInput.value.trim();
+      if (!current || current === "0") return;
+      if (current.startsWith("-")) {
+        displayInput.value = current.slice(1);
+      } else {
+        displayInput.value = "-" + current;
+      }
+    }
+
+    function extractFriendlyError(status, data) {
+      if (data && typeof data.detail === "string") {
+        return data.detail;
+      }
+      if (data && Array.isArray(data.detail) && data.detail.length > 0) {
+        return data.detail.map(err => err.msg || JSON.stringify(err)).join("; ");
+      }
+      if (status === 400) {
+        return "Bad Request (400): Please check your expression or numbers.";
+      }
+      if (status === 422) {
+        return "Validation Error (422): Only valid numeric values are allowed.";
+      }
+      return `Request failed with status ${status}.`;
+    }
+
+    async function evaluateExpression() {
+      hideError();
+      const expr = displayInput.value.trim();
+      if (!expr) {
+        showError("Please enter an expression to calculate.");
+        return;
+      }
+
+      try {
+        const response = await fetch("/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expression: expr })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          showError(extractFriendlyError(response.status, data));
+          return;
+        }
+
+        lastExpression.textContent = `${data.expression} =`;
+        displayInput.value = String(data.result);
+        await fetchHistory();
+      } catch (err) {
+        showError("Unable to reach Calculator API server.");
+      }
+    }
+
+    async function callBinaryEndpoint(endpoint) {
+      hideError();
+      const rawA = document.getElementById("inputA").value.trim();
+      const rawB = document.getElementById("inputB").value.trim();
+
+      const parsedA = Number(rawA);
+      const parsedB = Number(rawB);
+      const payload = {
+        a: rawA !== "" && !Number.isNaN(parsedA) ? parsedA : rawA,
+        b: rawB !== "" && !Number.isNaN(parsedB) ? parsedB : rawB
+      };
+
+      try {
+        const response = await fetch(`/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          showError(extractFriendlyError(response.status, data));
+          return;
+        }
+
+        lastExpression.textContent = `[/${endpoint}] ${data.expression} =`;
+        displayInput.value = String(data.result);
+        await fetchHistory();
+      } catch (err) {
+        showError("Unable to reach Calculator API server.");
+      }
+    }
+
+    async function fetchHistory() {
+      try {
+        const response = await fetch("/history");
+        if (!response.ok) return;
+        const items = await response.json();
+        renderHistory(Array.isArray(items) ? items : []);
+      } catch (err) {
+        // Ignore transient history errors
+      }
+    }
+
+    function renderHistory(items) {
+      if (!items.length) {
+        historyList.innerHTML = '<li class="empty-state">No calculations yet.</li>';
+        return;
+      }
+
+      const reversed = [...items].reverse();
+      historyList.innerHTML = reversed
+        .map(item => {
+          const timeStr = item.timestamp
+            ? new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+            : "";
+          return `
+            <li class="history-item" onclick="loadFromHistory('${ String(item.expression).replace(/'/g, "\\'") }', '${ item.result }')">
+              <div class="history-item-top">
+                <span class="op-tag">${item.operation}</span>
+                <span>${timeStr}</span>
+              </div>
+              <div class="history-item-expr">
+                <span>${item.expression}</span>
+                <span class="history-item-res">= ${item.result}</span>
+              </div>
+            </li>
+          `;
+        })
+        .join("");
+    }
+
+    function loadFromHistory(expr, result) {
+      hideError();
+      lastExpression.textContent = `${expr} =`;
+      displayInput.value = String(result);
+    }
+
+    async function clearHistory() {
+      try {
+        await fetch("/history", { method: "DELETE" });
+        await fetchHistory();
+      } catch (err) {
+        showError("Could not clear history.");
+      }
+    }
+
+    async function checkHealth() {
+      try {
+        const res = await fetch("/health");
+        const data = await res.json();
+        if (res.ok && data.status === "healthy") {
+          healthBadge.textContent = "API Healthy";
+        } else {
+          healthBadge.textContent = "API Degraded";
+        }
+      } catch (e) {
+        healthBadge.textContent = "API Offline";
+      }
+    }
+
+    displayInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        evaluateExpression();
+      }
+    });
+
+    checkHealth();
+    fetchHistory();
+  </script>
+</body>
+</html>
